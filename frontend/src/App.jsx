@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import logoImg from './assets/logo.png';
+import heroImg from './assets/hero.png';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = '/api/v1';
 
 export default function App() {
   // Authentication State
@@ -588,7 +589,7 @@ export default function App() {
                 <div className="stat-card">
                   <div className="stat-info">
                     <span className="stat-title">Records Analyzed</span>
-                    <span className="stat-value">{stats.totalRecords.toLocaleString()}</span>
+                    <span className="stat-value">{(stats.totalRecords || 0).toLocaleString()}</span>
                   </div>
                   <div className="stat-icon">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -720,10 +721,10 @@ export default function App() {
                         <div className="threat-summary">
                           {getSeverityBadge(breach.severity_score)}
                           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            Records: <strong>{breach.record_count.toLocaleString()}</strong>
+                            Records: <strong>{(breach.record_count || 0).toLocaleString()}</strong>
                           </span>
                           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            Domains: <strong>{breach.affected_domains.join(', ') || 'N/A'}</strong>
+                            Domains: <strong>{(breach.affected_domains || []).join(', ') || 'N/A'}</strong>
                           </span>
                           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                             Confidence:{' '}
@@ -784,7 +785,7 @@ export default function App() {
                             Category: <strong>{hit.data_types.join(', ')}</strong>
                           </span>
                           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            Target Domains: <strong>{hit.affected_domains.join(', ') || 'N/A'}</strong>
+                            Target Domains: <strong>{(hit.affected_domains || []).join(', ') || 'N/A'}</strong>
                           </span>
                         </div>
                       </div>
@@ -992,7 +993,7 @@ export default function App() {
                       {selectedBreach.confirmed_authentic === 1 ? '✅ VERIFIED AUTHENTIC' : '⚠️ UNVERIFIED INTEL'}
                     </span>
                   </div>
-                  <div>Record Count: <strong>{selectedBreach.record_count.toLocaleString()}</strong></div>
+                  <div>Record Count: <strong>{(selectedBreach.record_count || 0).toLocaleString()}</strong></div>
                   <div>Confidence Score: 
                     <span style={{ 
                       marginLeft: '6px', 
