@@ -342,8 +342,9 @@ pm update --save) to ensure compatibility with modern stacks. Verified backend 
 - **Session Finalized:** All LeakHunter V3 enhancements staged successfully.
 
 ### [2026-09-16] Pre-Demo Bug Fixes & Resiliency Patch
-*   **Authentication Resiliency:** Patched ackend/app/main.py login route to strip accidental trailing whitespaces from emails, preventing 401 Unauthorized errors during copy-pasting.
-*   **IPv6 Bridge Routing Fix:** Resolved critical Nginx 502 Bad Gateway / 111 Connection Refused bugs by binding FastAPI Uvicorn to all interfaces (--host "::") in docker-compose.yml, bypassing Docker's internal IPv6 DNS routing blackholes.
-*   **React Frontend Crash Prevention:** Implemented optional chaining and null-coalescing fallbacks in App.jsx for Data Grid metrics (ecord_count and ffected_domains). This prevents fatal TypeError white-screens when rendering .toLocaleString() on unpopulated database fields.
-*   **Secure API Routing:** Fixed mixed-content blocking (HTTP vs HTTPS) in React by forcing the frontend to use relative Nginx proxy paths (API_BASE_URL = '/api/v1').
-*   **Local Demo Environment:** Injected an automated data seeder (seed_db.py) into the local docker-compose.yml boot sequence to automatically spin up 45 realistic AI-classified data leaks and a master admin account for seamless investor presentations. *(Note: Seeder excluded from public GitHub).*
+*   **Authentication Resiliency:** Patched `backend/app/main.py` login route to strip accidental trailing whitespaces from emails, preventing `401 Unauthorized` errors during copy-pasting.
+*   **IPv6 Bridge Routing Fix:** Resolved critical Nginx `502 Bad Gateway` / `111 Connection Refused` bugs by binding FastAPI Uvicorn to all interfaces (`--host "::"`) in `docker-compose.yml`, bypassing Docker's internal IPv6 DNS routing blackholes.
+*   **React Frontend Crash Prevention:** Implemented optional chaining and null-coalescing fallbacks in `App.jsx` for Data Grid metrics (`record_count` and `affected_domains`). This prevents fatal `TypeError` white-screens when rendering `.toLocaleString()` on unpopulated database fields.
+*   **Secure API Routing:** Fixed mixed-content blocking (HTTP vs HTTPS) in React by forcing the frontend to use relative Nginx proxy paths (`API_BASE_URL = '/api/v1'`).
+*   **Local Demo Environment:** Injected an automated data seeder (`seed_db.py`) into the local `docker-compose.yml` boot sequence to automatically spin up 45 realistic AI-classified data leaks and a master admin account for seamless investor presentations. *(Note: Seeder excluded from public GitHub).*
+*   **GitHub Synchronization:** Fully synchronized all resilient codebase patches to the public repository while keeping the automated demo seeder strictly localized. Ready for investor pitch.
