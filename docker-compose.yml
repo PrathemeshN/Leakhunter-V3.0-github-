@@ -1,0 +1,245 @@
+services:
+  db:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_USER: breach_user
+      POSTGRES_PASSWORD: breach_pass
+      POSTGRES_DB: leakhunter_v2
+    volumes:
+    - postgres_data_v2:/var/lib/postgresql/data
+    ports:
+    - 5432:5432
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U breach_user -d leakhunter_v2
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    ports:
+    - 6379:6379
+    volumes:
+    - redis_data_v2:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    environment:
+    - discovery.type=single-node
+    - xpack.security.enabled=false
+    - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+    - 9200:9200
+    volumes:
+    - elasticsearch_data_v2:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 40s
+  tor:
+    image: alpine:latest
+    entrypoint: "sh -c \"apk add --no-cache tor netcat-openbsd && \n       echo 'SocksPort\
+      \ 0.0.0.0:9050' > /etc/tor/torrc && \n       echo 'MaxCircuitDirtiness 30' >>\
+      \ /etc/tor/torrc && \n       tor -f /etc/tor/torrc\"\n"
+    ports:
+    - 9050:9050
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - nc -z localhost 9050 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  api:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+    - 8000:8000
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    - ELASTICSEARCH_URL=http://elasticsearch:9200
+    - TOR_PROXY_URL=socks5://tor:9050
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      tor:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  worker:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    - ELASTICSEARCH_URL=http://elasticsearch:9200
+    - TOR_PROXY_URL=socks5://tor:9050
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    command: python -m app.workers.consumer
+  telegram_scraper:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - ELASTICSEARCH_URL=http://elasticsearch:9200
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    command: python -m app.workers.telegram_worker
+    restart: on-failure
+  paste_scraper:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - ELASTICSEARCH_URL=http://elasticsearch:9200
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    command: python -m app.workers.paste_worker
+    restart: on-failure
+  mirror_worker:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - ELASTICSEARCH_URL=http://elasticsearch:9200
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      tor:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    command: python -m app.workers.mirror_worker
+    restart: on-failure
+  forum_scraper:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - ELASTICSEARCH_URL=http://elasticsearch:9200
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      tor:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    shm_size: 256mb
+    command: python -m app.workers.forum_worker
+    restart: on-failure
+  alert_worker:
+    image: leakhunterv2-backend:latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+    - DATABASE_URL=postgresql+asyncpg://breach_user:breach_pass@db:5432/leakhunter_v2
+    - REDIS_URL=redis://redis:6379/0
+    - EVENT_BROKER=rabbitmq
+    - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+    - ./backend:/app
+    command: python -m app.workers.alert_worker
+    restart: on-failure
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+    - 5672:5672
+    - 15672:15672
+    healthcheck:
+      test:
+      - CMD
+      - rabbitmq-diagnostics
+      - -q
+      - ping
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  nginx:
+    image: nginx:alpine
+    ports:
+    - 80:80
+    - 443:443
+    volumes:
+    - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+    - api
+volumes:
+  postgres_data_v2: null
+  redis_data_v2: null
+  elasticsearch_data_v2: null
+  kafka_data_v2: null

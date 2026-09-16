@@ -1,0 +1,41 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial' }}}%%
+graph TD
+    subgraph Frontend
+        UI[React SPA<br/>Modular Components]
+    end
+
+    subgraph Security Layer
+        Nginx[Nginx Reverse Proxy<br/>SSL / TLS Encryption]
+    end
+
+    subgraph Backend
+        API[FastAPI Server<br/>SQLAlchemy Pooling]
+    end
+
+    subgraph Persistent Messaging
+        RMQ[RabbitMQ<br/>Persistent Queues & ACKs]
+    end
+
+    subgraph Data Layer
+        PG[(PostgreSQL<br/>Single Node)]
+        ES[(Elasticsearch<br/>JVM Limits & ILM)]
+    end
+
+    subgraph Scrapers
+        TS[Telegram Scraper<br/>Public HTML]
+        PS[Pastebin Scraper<br/>Single IP]
+        FS[Forum Scraper<br/>Playwright + Tor]
+    end
+
+    TS -->|Published via AMQP| RMQ
+    PS -->|Published via AMQP| RMQ
+    FS -->|Published via AMQP| RMQ
+    
+    RMQ -->|Consumes Ack| Consumer[Consumer / ML Pipeline<br/>Cached Models]
+    Consumer -->|Writes| PG
+    Consumer -->|Indexes| ES
+    
+    UI -->|HTTPS Calls| Nginx
+    Nginx --> API
+    API -->|Reads| PG
+    API -->|Searches| ES

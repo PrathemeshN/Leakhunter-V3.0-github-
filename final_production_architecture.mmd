@@ -1,0 +1,49 @@
+%%{init: {'theme': 'dark', 'themeVariables': { 'fontSize': '16px', 'fontFamily': 'arial' }}}%%
+graph TD
+    subgraph Frontend
+        UI[React SPA<br/>Cloudflare CDN]
+    end
+
+    subgraph Backend Services
+        Nginx[Nginx Load Balancer]
+        API[FastAPI Cluster<br/>Auto-scaled workers]
+    end
+
+    subgraph Message Broker
+        RMQ[RabbitMQ Cluster<br/>High Availability]
+    end
+
+    subgraph Data Layer
+        PgBouncer[PgBouncer<br/>Connection Pooler]
+        PG[(PostgreSQL<br/>Primary-Replica)]
+        ES[(Elasticsearch Cluster)]
+    end
+
+    subgraph Stealth Scraper Fleet
+        TS[Telegram MTProto Workers<br/>Burner Sessions]
+        PS[Pastebin Workers<br/>Rotating Proxies]
+        FS[Forum Workers<br/>Anti-Detect + CapSolver]
+    end
+    
+    subgraph External APIs
+        Proxies[Residential Proxies]
+        Captcha[CAPTCHA Solvers]
+    end
+
+    FS -.->|Solves Challenges| Captcha
+    PS -.->|IP Rotation| Proxies
+    FS -.->|IP Rotation| Proxies
+
+    TS -->|Published via AMQP| RMQ
+    PS -->|Published via AMQP| RMQ
+    FS -->|Published via AMQP| RMQ
+    
+    RMQ -->|Consumes| Consumer[Consumer Pool<br/>Auto-scaling]
+    Consumer -->|Writes| PgBouncer
+    PgBouncer --> PG
+    Consumer -->|Indexes| ES
+    
+    UI -->|HTTPS| Nginx
+    Nginx --> API
+    API -->|Reads| PgBouncer
+    API -->|Searches| ES
